@@ -14,7 +14,11 @@ const GOOD = 72; // a reading this sure is kept without trying the photo turned
 let worker = null;
 async function reader() {
   if (!worker) {
-    worker = createWorker("eng", 1, { langPath: path.join(here, "lang"), gzip: false, cachePath: "/tmp", cacheMethod: "none" })
+    const t0 = Date.now();
+    // Never wait forever for the reader to start (a missing file made it hang until Vercel's 60 s limit).
+    const giveUp = new Promise((_, no) => setTimeout(() => no(new Error("reader didn't start in 25 s")), 25_000));
+    worker = Promise.race([createWorker("eng", 1, { langPath: path.join(here, "lang"), gzip: false, cachePath: "/tmp", cacheMethod: "none", errorHandler: (e) => console.error("[reader]", e) }), giveUp])
+      .then((w) => { console.log("[reader] started in", Date.now() - t0, "ms"); return w; })
       .then(async (w) => { await w.setParameters({ tessedit_pageseg_mode: PSM.AUTO, preserve_interword_spaces: "1" }); return w; })
       .catch((e) => { worker = null; throw e; });
   }
