@@ -50,12 +50,19 @@ const realWords = (lines) => lines.reduce((n, l) => n + (l.text.match(/[A-Za-z0-
  * Each way up is read twice (plain and cleaned): all of the plain reading, plus the lines only the cleaned one found
  * (when fairly sure of them). The way up that reads most is kept.
  */
-export async function readCard(bytes) {
+export async function readCard(bytes, steps = []) {
   const started = Date.now();
+  const lap = (what) => steps.push(`${what} ${Date.now() - started}ms`);
   const w = await reader();
+  lap("reader ready");
   let best = null;
   for (const deg of [0, 90, 270]) {
-    const [plain, clean] = [await readOnce(w, await prepare(bytes, deg, false)), await readOnce(w, await prepare(bytes, deg, true))];
+    // Vercel stops the function at 60 s: past 35 s, the best reading so far is what comes back.
+    if (best && Date.now() - started > 35_000) break;
+    const plain = await readOnce(w, await prepare(bytes, deg, false));
+    lap(`${deg}° plain`);
+    const clean = Date.now() - started > 40_000 ? { lines: [], sure: 0 } : await readOnce(w, await prepare(bytes, deg, true));
+    lap(`${deg}° cleaned`);
     // Everything the plain reading found, in its order; then what only the cleaned one found, when fairly sure of it.
     const lines = [...plain.lines];
     for (const l of clean.lines) {
@@ -73,5 +80,5 @@ export async function readCard(bytes) {
     if (deg === 0 && sure >= GOOD && words >= 8) break;
   }
   const lines = best.lines.map((l) => ({ text: l.text, sure: Math.round(l.sure), size: l.h }));
-  return { text: lines.map((l) => l.text).join("\n"), lines, confidence: Math.round(best.sure), turned: best.turned, ms: Date.now() - started };
+  return { text: lines.map((l) => l.text).join("\n"), lines, confidence: Math.round(best.sure), turned: best.turned, ms: Date.now() - started, steps };
 }

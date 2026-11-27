@@ -17,7 +17,19 @@ export default async function handler(req, res) {
     res.setHeader("Access-Control-Allow-Headers", "content-type");
   }
   if (req.method === "OPTIONS") return res.status(ok ? 204 : 403).end();
-  if (req.method === "GET") return res.status(200).json({ ok: true, what: "Think Health card scanner: POST a card photo to /api/scan" });
+  if (req.method === "GET") {
+    // GET ?check=1: reads a small made-up picture and says how long each step took (to see where time goes on Vercel).
+    if (/[?&]check=1/.test(req.url ?? "")) {
+      const steps = [];
+      try {
+        const sharp = (await import("sharp")).default;
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="200"><rect width="100%" height="100%" fill="white"/><text x="30" y="120" font-size="64" font-family="Arial">TEST CARD 12345</text></svg>';
+        const out = await readCard(await sharp(Buffer.from(svg)).png().toBuffer(), steps);
+        return res.status(200).json({ ok: true, text: out.text, steps });
+      } catch (e) { return res.status(500).json({ ok: false, error: String(e?.message ?? e), steps }); }
+    }
+    return res.status(200).json({ ok: true, what: "Think Health card scanner: POST a card photo to /api/scan" });
+  }
   if (req.method !== "POST") return res.status(405).json({ error: "POST a photo" });
   if (origin && !ok) return res.status(403).json({ error: "Not allowed from this site" });
   if (!/^image\//.test(req.headers["content-type"] ?? "")) return res.status(415).json({ error: "Send the photo itself (image/jpeg or image/png)" });
