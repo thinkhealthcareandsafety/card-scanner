@@ -1,0 +1,15 @@
+{
+  "name": "card-scanner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Think Health card scanner: reads the words on a visiting-card photo (Tesseract, best English model) and returns them. Used by the Think Health Dashboard's External Leads.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "try": "node try.js"
+  },
+  "dependencies": {
+    "sharp": "0.34.5",
+    "tesseract.js": "7.0.0"
+  }
+}
